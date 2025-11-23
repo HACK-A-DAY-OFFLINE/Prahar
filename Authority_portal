@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart PDS - Authority Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Firebase App (required) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <!-- Firebase Auth and Database -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        :root {
+            --primary: #0b6fb6;
+            --secondary: #0a5a9c;
+            --success: #2e7d32;
+            --danger: #d32f2f;
+            --warning: #ed6c02;
+            --info: #0288d1;
+            --light: #f5f5f5;
+            --dark: #212529;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        .login-container {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary), #083c6e);
+        }
+        
+        .login-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 450px;
+            overflow: hidden;
+        }
+        
+        .login-header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+        
+        .login-body {
+            padding: 25px;
+        }
+        
+        .dashboard-container {
+            display: none;
+            background: white;
+            min-height: 100vh;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .sidebar {
+            background: white;
+            min-height: calc(100vh - 70px);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+            padding: 0;
+        }
+        
+        .sidebar-sticky {
+            position: sticky;
+            top: 0;
+            padding-top: 20px;
+        }
+        
+        .sidebar .nav-link {
+            color: #555;
+            padding: 12px 20px;
+            border-left: 4px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .sidebar .nav-link:hover {
+            background: #f8f9fa;
+            color: var(--primary);
+        }
+        
+        .sidebar .nav-link.active {
+            background: #e3f2fd;
+            color: var(--primary);
+            border-left: 4px solid var(--primary);
+            font-weight: 600;
+        }
+        
+        .sidebar .nav-link i {
+            width: 24px;
+            text-align: center;
+            margin-right: 10px;
+        }
+        
+        .main-content {
+            padding: 20px;
+            background: #f8f9fa;
+            min-height: calc(100vh - 70px);
+        }
+        
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin-bottom: 20px;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-radius: 12px 12px 0 0 !important;
+            padding: 15px 20px;
+            font-weight: 600;
+        }
+        
+        .alert-card {
+            border-left: 5px solid var(--danger);
+            animation: pulse-alert 2s infinite;
+        }
+        
+        @keyframes pulse-alert {
+            0% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(211, 47, 47, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0); }
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 20px 15px;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .stat-number {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: var(--dark);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        
+        .shop-card {
+            border-left: 4px solid var(--info);
+        }
+        
+        .shop-card.suspicious {
+            border-left: 4px solid var(--danger);
+        }
+        
+        .mismatch-badge {
+            background: var(--danger);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            animation: blink 1.5s infinite;
+        }
+        
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 10px;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .table th {
+            background: var(--light);
+            font-weight: 600;
+        }
+        
+        .nav-tabs .nav-link {
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--dark);
+            font-weight: 500;
+            padding: 12px 20px;
+        }
+        
+        .nav-tabs .nav-link.active {
+            border-bottom: 3px solid var(--primary);
+            color: var(--primary);
+            background: transparent;
+        }
+        
+        .logout-btn {
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 15px;
+            font-size: 0.9rem;
+        }
+        
+        .notification-badge {
+            font-size: 0.7rem;
+            width: 20px;
+            height: 20px;
+        }
+        
+        .alert-indicator {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 12px;
+            height: 12px;
+            background: var(--danger);
+            border-radius: 50%;
+            animation: pulse-alert 1.5s infinite;
+        }
+        
+        .shop-status {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .status-normal {
+            background: #d5f4e6;
+            color: #27ae60;
+        }
+        
+        .status-warning {
+            background: #fdebd0;
+            color: #f39c12;
+        }
+        
+        .status-critical {
+            background: #fadbd8;
+            color: #e74c3c;
+        }
+        
+        .risk-indicator {
+            width: 100%;
+            height: 10px;
+            border-radius: 5px;
+            background: #e0e0e0;
+            overflow: hidden;
+        }
+        
+        .risk-level {
+            height: 100%;
+            border-radius: 5px;
+        }
+        
+        .risk-low {
+            background: #2e7d32;
+            width: 25%;
+        }
+        
+        .risk-medium {
+            background: #f9a825;
+            width: 50%;
+        }
+        
+        .risk-high {
+            background: #d32f2f;
+            width: 75%;
+        }
+        
+        .risk-critical {
+            background: #b71c1c;
+            width: 95%;
+        }
+        
+        .page {
+            display: none;
+        }
+        
+        .page.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Section -->
+    <div class="login-container" id="loginSection">
+        <div class="login-card">
+            <div class="login-header">
+                <h2 style="font-size: 1.8rem;"><i class="fas fa-shield-alt me-2"></i>Smart PDS Authority</h2>
+                <p class="mb-0" style="font-size: 1rem;">Food Department Monitoring System</p>
+            </div>
+            <div class="login-body">
+                <div class="mb-3">
+                    <label for="authEmail" class="form-label">Official Email</label>
+                    <input type="email" class="form-control" id="authEmail" placeholder="Enter official email" value="officer@fooddept.gov.in">
+                </div>
+                <div class="mb-3">
+                    <label for="authPassword" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="authPassword" placeholder="Enter password" value="password123">
+                </div>
+                <div class="mb-3">
+                    <label for="authRegion" class="form-label">Region/District</label>
+                    <select class="form-control" id="authRegion">
+                        <option value="national">National Level</option>
+                        <option value="north">Northern Region</option>
+                        <option value="south">Southern Region</option>
+                        <option value="east">Eastern Region</option>
+                        <option value="west">Western Region</option>
+                    </select>
+                </div>
+                <div class="loading" id="loginLoading">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-2">Authenticating...</p>
+                </div>
+                <button class="btn btn-primary w-100" id="loginBtn" style="background: linear-gradient(135deg, var(--primary), var(--secondary));">
+                    <i class="fas fa-lock me-2"></i>Access Dashboard
+                </button>
+                <button class="btn btn-outline-warning w-100 mt-3" id="demoBtn">
+                    <i class="fas fa-bolt me-2"></i>Quick Demo: Simulate Stock Mismatch
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div class="dashboard-container" id="dashboardSection">
+        <div class="navbar">
+            <div class="d-flex justify-content-between align-items-center w-100">
+                <h3 class="mb-0" style="font-size: 1.4rem;">
+                    <i class="fas fa-shield-alt me-2"></i>PDS Monitoring Dashboard
+                    <small class="ms-2 opacity-75" id="userRegion">National Level</small>
+                </h3>
+                <div class="d-flex align-items-center">
+                    <div class="notification-icon position-relative me-3">
+                        <i class="fas fa-bell fa-lg"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger notification-badge" id="alertCount">0</span>
+                    </div>
+                    <div class="me-3">
+                        <span id="userName">Food Department Officer</span>
+                    </div>
+                    <button class="logout-btn" id="logoutBtn">
+                        <i class="fas fa-sign-out-alt me-1"></i>Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="container-fluid">
+            <div class="row">
+                <!-- Sidebar -->
+                <div class="col-md-2 sidebar">
+                    <div class="sidebar-sticky">
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="#" data-page="dashboard">
+                                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" data-page="shops">
+                                    <i class="fas fa-store"></i> Shop Monitoring
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" data-page="alerts">
+                                    <i class="fas fa-exclamation-triangle"></i> Alerts
+                                    <span class="badge bg-danger ms-1" id="sidebarAlertCount">0</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" data-page="analytics">
+                                    <i class="fas fa-chart-line"></i> Analytics
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" data-page="audit">
+                                    <i class="fas fa-clipboard-list"></i> Audit Logs
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" data-page="reports">
+                                    <i class="fas fa-file-pdf"></i> Reports
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Main Content -->
+                <div class="col-md-10 main-content">
+                    <!-- Dashboard Page -->
+                    <div class="page active" id="dashboard-page">
+                        <!-- Alert Banner -->
+                        <div class="alert alert-danger alert-card mb-4 d-none" id="globalAlert">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                                <div>
+                                    <h5 class="alert-heading mb-1">Stock Mismatch Detected!</h5>
+                                    <p class="mb-0" id="alertMessage">One or more shops show discrepancies between expected and actual stock levels.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Key Metrics -->
+                            <div class="col-md-3">
+                                <div class="card stat-card">
+                                    <div class="stat-number text-primary" id="totalShops">0</div>
+                                    <div class="stat-label">Total Shops Monitored</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card stat-card">
+                                    <div class="stat-number text-success" id="normalShops">0</div>
+                                    <div class="stat-label">Shops with Normal Stock</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card stat-card">
+                                    <div class="stat-number text-warning" id="warningShops">0</div>
+                                    <div class="stat-label">Shops with Minor Issues</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card stat-card">
+                                    <div class="stat-number text-danger" id="criticalShops">0</div>
+                                    <div class="stat-label">Shops with Critical Issues</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-8">
+                                <!-- Stock Distribution Chart -->
+                                <div class="card">
+                                    <div class="card-header">Stock Distribution Overview</div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="stockChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Recent Alerts -->
+                                <div class="card mt-4">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <span>Recent Stock Alerts</span>
+                                        <span class="badge bg-danger" id="recentAlertsCount">0 Alerts</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="stockAlerts">
+                                            <!-- Alerts will be loaded here -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <!-- Discrepancy Chart -->
+                                <div class="card">
+                                    <div class="card-header">Stock Discrepancy Overview</div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="discrepancyChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- AI Fraud Prediction -->
+                                <div class="card mt-4">
+                                    <div class="card-header">AI Fraud Prediction</div>
+                                    <div class="card-body">
+                                        <div class="text-center mb-3">
+                                            <i class="fas fa-robot fa-3x text-primary mb-2"></i>
+                                            <h5>Risk Assessment</h5>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span>High Risk Shops</span>
+                                                <strong id="highRiskShops">0</strong>
+                                            </div>
+                                            <div class="risk-indicator">
+                                                <div class="risk-level risk-critical" id="riskIndicator"></div>
+                                            </div>
+                                        </div>
+                                        <p class="small text-muted">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Based on transaction trends, <span id="riskShopCount">0</span> shops have a high risk of mismatch next month.
+                                        </p>
+                                        <button class="btn btn-sm btn-outline-primary w-100">
+                                            <i class="fas fa-chart-bar me-1"></i> View Detailed Analysis
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Quick Actions -->
+                                <div class="card mt-4">
+                                    <div class="card-header">Quick Actions</div>
+                                    <div class="card-body">
+                                        <div class="d-grid gap-2">
+                                            <button class="btn btn-primary" id="generateReportBtn">
+                                                <i class="fas fa-file-pdf me-2"></i>Generate Monthly Report
+                                            </button>
+                                            <button class="btn btn-warning" id="sendAlertsBtn">
+                                                <i class="fas fa-bell me-2"></i>Send Alert to All Shops
+                                            </button>
+                                            <button class="btn btn-danger" id="flagInvestigationBtn">
+                                                <i class="fas fa-flag me-2"></i>Flag for Investigation
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Shop Monitoring Page -->
+                    <div class="page" id="shops-page">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span>Shop Monitoring</span>
+                                <div class="d-flex">
+                                    <input type="text" class="form-control me-2" id="shopSearch" placeholder="Search shops...">
+                                    <div class="form-check form-switch mt-1">
+                                        <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
+                                        <label class="form-check-label" for="autoRefresh">Auto Refresh</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Shop ID</th>
+                                                <th>Shop Name</th>
+                                                <th>Location</th>
+                                                <th>Expected Stock</th>
+                                                <th>Actual Stock</th>
+                                                <th>Discrepancy</th>
+                                                <th>Status</th>
+                                                <th>AI Risk</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="shopMonitoringTable">
+                                            <!-- Shop data will be loaded here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Alerts Page -->
+                    <div class="page" id="alerts-page">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span>Stock Mismatch Alerts</span>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-secondary" id="filterAll">All</button>
+                                    <button class="btn btn-sm btn-outline-secondary" id="filterActive">Active</button>
+                                    <button class="btn btn-sm btn-outline-secondary" id="filterResolved">Resolved</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="alertsContainer">
+                                    <!-- Alerts will be loaded here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Analytics Page -->
+                    <div class="page" id="analytics-page">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header">Monthly Leakage Trends</div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="leakageChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">Region-wise Efficiency</div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="efficiencyChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">Mismatch Resolution</div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="resolutionChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">Financial Impact</div>
+                                    <div class="card-body">
+                                        <h4 class="text-success">₹ <span id="savingsAmount">2,45,000</span></h4>
+                                        <p class="text-muted">Estimated savings due to reduced leakage</p>
+                                        <div class="progress mb-3" style="height: 20px;">
+                                            <div class="progress-bar bg-success" role="progressbar" style="width: 65%;" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100">65% Improvement</div>
+                                        </div>
+                                        <small class="text-muted">Compared to previous year</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Audit Logs Page -->
+                    <div class="page" id="audit-page">
+                        <div class="card">
+                            <div class="card-header">Audit Logs</div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Timestamp</th>
+                                                <th>User</th>
+                                                <th>Action</th>
+                                                <th>Shop ID</th>
+                                                <th>Remarks</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="auditLogsTable">
+                                            <!-- Audit logs will be loaded here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reports Page -->
+                    <div class="page" id="reports-page">
+                        <div class="card">
+                            <div class="card-header">Report Generation</div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="card mb-4">
+                                            <div class="card-body text-center">
+                                                <i class="fas fa-file-pdf fa-3x text-danger mb-3"></i>
+                                                <h5>Monthly Compliance Report</h5>
+                                                <p class="text-muted">Generate comprehensive monthly report for all shops</p>
+                                                <button class="btn btn-danger" id="generateMonthlyReport">
+                                                    <i class="fas fa-download me-2"></i>Generate PDF
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card mb-4">
+                                            <div class="card-body text-center">
+                                                <i class="fas fa-chart-bar fa-3x text-primary mb-3"></i>
+                                                <h5>Performance Analytics</h5>
+                                                <p class="text-muted">Detailed analytics and insights report</p>
+                                                <button class="btn btn-primary" id="generateAnalyticsReport">
+                                                    <i class="fas fa-download me-2"></i>Generate Report
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card">
+                                    <div class="card-header">Recent Reports</div>
+                                    <div class="card-body">
+                                        <div class="list-group" id="reportsList">
+                                            <!-- Reports will be listed here -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap & Firebase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD8tOpjuDF1Xq_3DxNSgkU4dYzE2pBI6mQ",
+            authDomain: "pdssytm.firebaseapp.com",
+            databaseURL: "https://pdssytm-default-rtdb.firebaseio.com",
+            projectId: "pdssytm",
+            storageBucket: "pdssytm.firebasestorage.app",
+            messagingSenderId: "197853991949",
+            appId: "1:197853991949:web:e73009920da00c4e98b144"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // DOM Elements
+        const loginSection = document.getElementById('loginSection');
+        const dashboardSection = document.getElementById('dashboardSection');
+        const loginBtn = document.getElementById('loginBtn');
+        const demoBtn = document.getElementById('demoBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const authEmail = document.getElementById('authEmail');
+        const authPassword = document.getElementById('authPassword');
+        const authRegion = document.getElementById('authRegion');
+        const loginLoading = document.getElementById('loginLoading');
+        const userRegion = document.getElementById('userRegion');
+        const userName = document.getElementById('userName');
+        const shopMonitoringTable = document.getElementById('shopMonitoringTable');
+        const stockAlerts = document.getElementById('stockAlerts');
+        const globalAlert = document.getElementById('globalAlert');
+        const alertMessage = document.getElementById('alertMessage');
+        const alertCount = document.getElementById('alertCount');
+        const sidebarAlertCount = document.getElementById('sidebarAlertCount');
+        const recentAlertsCount = document.getElementById('recentAlertsCount');
+        const totalShops = document.getElementById('totalShops');
+        const normalShops = document.getElementById('normalShops');
+        const warningShops = document.getElementById('warningShops');
+        const criticalShops = document.getElementById('criticalShops');
+        const highRiskShops = document.getElementById('highRiskShops');
+        const riskShopCount = document.getElementById('riskShopCount');
+        const riskIndicator = document.getElementById('riskIndicator');
+        const generateReportBtn = document.getElementById('generateReportBtn');
+        const sendAlertsBtn = document.getElementById('sendAlertsBtn');
+        const flagInvestigationBtn = document.getElementById('flagInvestigationBtn');
+        const autoRefresh = document.getElementById('autoRefresh');
+        const shopSearch = document.getElementById('shopSearch');
+        const alertsContainer = document.getElementById('alertsContainer');
+        const auditLogsTable = document.getElementById('auditLogsTable');
+        const savingsAmount = document.getElementById('savingsAmount');
+        const generateMonthlyReport = document.getElementById('generateMonthlyReport');
+        const generateAnalyticsReport = document.getElementById('generateAnalyticsReport');
+        const reportsList = document.getElementById('reportsList');
+
+        // Page navigation
+        const pages = document.querySelectorAll('.page');
+        const navLinks = document.querySelectorAll('.sidebar .nav-link');
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const pageId = this.getAttribute('data-page');
+                
+                // Update active nav link
+                navLinks.forEach(nav => nav.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Show selected page
+                pages.forEach(page => page.classList.remove('active'));
+                document.getElementById(`${pageId}-page`).classList.add('active');
+            });
+        });
+
+        // Demo data for shops
+        const demoShops = [
+            { id: "SHOP001", name: "FairPrice Ration Shop", location: "Sector 12", dealer: "Raj Kumar", 
+              expectedRice: 100, actualRice: 90, expectedWheat: 80, actualWheat: 80, region: "north" },
+            { id: "SHOP002", name: "Green Valley Distributors", location: "Sector 18", dealer: "Priya Sharma", 
+              expectedRice: 120, actualRice: 95, expectedWheat: 100, actualWheat: 100, region: "south" },
+            { id: "SHOP003", name: "City Center Ration", location: "Downtown", dealer: "Amit Patel", 
+              expectedRice: 150, actualRice: 150, expectedWheat: 120, actualWheat: 120, region: "west" },
+            { id: "SHOP004", name: "Suburban Supplies", location: "Sector 25", dealer: "Sneha Reddy", 
+              expectedRice: 90, actualRice: 90, expectedWheat: 70, actualWheat: 65, region: "east" },
+            { id: "SHOP005", name: "Village Ration Store", location: "Rural Area", dealer: "Vikram Singh", 
+              expectedRice: 80, actualRice: 60, expectedWheat: 60, actualWheat: 60, region: "north" },
+            { id: "SHOP006", name: "Metro Ration Point", location: "City Center", dealer: "Anita Desai", 
+              expectedRice: 200, actualRice: 180, expectedWheat: 150, actualWheat: 150, region: "south" },
+            { id: "SHOP007", name: "Township Distributors", location: "New Town", dealer: "Rahul Verma", 
+              expectedRice: 110, actualRice: 110, expectedWheat: 90, actualWheat: 85, region: "west" },
+            { id: "SHOP008", name: "Community Ration Shop", location: "Sector 5", dealer: "Neha Gupta", 
+              expectedRice: 95, actualRice: 75, expectedWheat: 80, actualWheat: 80, region: "east" }
+        ];
+
+        // Stock alerts data
+        let stockAlertsData = [];
+        let auditLogs = [];
+        let activeCharts = {};
+
+        // Login Function
+        loginBtn.addEventListener('click', function() {
+            const email = authEmail.value;
+            const password = authPassword.value;
+            const region = authRegion.value;
+            
+            if (email && password) {
+                loginLoading.style.display = 'block';
+                loginBtn.disabled = true;
+                
+                // For demo purposes, we'll simulate authentication
+                setTimeout(() => {
+                    loginLoading.style.display = 'none';
+                    loginBtn.disabled = false;
+                    loginSection.style.display = 'none';
+                    dashboardSection.style.display = 'block';
+                    
+                    // Set user info
+                    userRegion.textContent = authRegion.options[authRegion.selectedIndex].text;
+                    userName.textContent = email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    
+                    // Initialize the dashboard
+                    initializeDashboard();
+                    
+                }, 1500);
+            } else {
+                alert("Please enter both email and password.");
+            }
+        });
+
+        // Demo Button - Simulate Stock Mismatch
+        demoBtn.addEventListener('click', function() {
+            // Pre-fill credentials for demo
+            authEmail.value = "officer@fooddept.gov.in";
+            authPassword.value = "password123";
+            
+            // Show quick login message
+            alert("Demo mode activated! Click 'Access Dashboard' to continue.");
+        });
+
+        // Logout Function
+        logoutBtn.addEventListener('click', function() {
+            dashboardSection.style.display = 'none';
+            loginSection.style.display = 'flex';
+            authEmail.value = '';
+            authPassword.value = '';
+        });
+
+        // Initialize Dashboard
+        function initializeDashboard() {
+            loadShopData();
+            initCharts();
+            loadAuditLogs();
+            loadReports();
+            setupRealtimeListeners();
+            
+            // Set up auto-refresh
+            setInterval(() => {
+                if (autoRefresh.checked) {
+                    loadShopData();
+                }
+            }, 10000); // Refresh every 10 seconds
+            
+            // Set up search functionality
+            shopSearch.addEventListener('input', filterShops);
+            
+            // Set up alert filters
+            document.getElementById('filterAll').addEventListener('click', () => filterAlerts('all'));
+            document.getElementById('filterActive').addEventListener('click', () => filterAlerts('active'));
+            document.getElementById('filterResolved').addEventListener('click', () => filterAlerts('resolved'));
+        }
+
+        // Load shop data and detect mismatches
+        function loadShopData() {
+            const region = authRegion.value;
+            let filteredShops = demoShops;
+            
+            // Filter by region if not national
+            if (region !== 'national') {
+                filteredShops = demoShops.filter(shop => shop.region === region);
+            }
+            
+            let normalCount = 0;
+            let warningCount = 0;
+            let criticalCount = 0;
+            let highRiskCount = 0;
+            
+            shopMonitoringTable.innerHTML = '';
+            stockAlertsData = [];
+            
+            filteredShops.forEach(shop => {
+                // Calculate discrepancies
+                const riceDiscrepancy = shop.expectedRice - shop.actualRice;
+                const wheatDiscrepancy = shop.expectedWheat - shop.actualWheat;
+                const totalDiscrepancy = riceDiscrepancy + wheatDiscrepancy;
+                
+                // Determine status
+                let status = 'normal';
+                let statusClass = 'status-normal';
+                let statusText = 'Normal';
+                let riskLevel = 'risk-low';
+                let riskText = 'Low';
+                
+                if (totalDiscrepancy > 10) {
+                    status = 'critical';
+                    statusClass = 'status-critical';
+                    statusText = 'Critical';
+                    riskLevel = 'risk-critical';
+                    riskText = 'Critical';
+                    criticalCount++;
+                    highRiskCount++;
+                    
+                    // Add to alerts
+                    stockAlertsData.push({
+                        shopId: shop.id,
+                        shopName: shop.name,
+                        dealer: shop.dealer,
+                        discrepancy: totalDiscrepancy,
+                        riceDiff: riceDiscrepancy,
+                        wheatDiff: wheatDiscrepancy,
+                        timestamp: new Date().toLocaleString(),
+                        type: 'stock_mismatch',
+                        status: 'active',
+                        severity: 'high'
+                    });
+                } else if (totalDiscrepancy > 5) {
+                    status = 'warning';
+                    statusClass = 'status-warning';
+                    statusText = 'Warning';
+                    riskLevel = 'risk-high';
+                    riskText = 'High';
+                    warningCount++;
+                    highRiskCount++;
+                } else {
+                    normalCount++;
+                    // Random risk for demo
+                    const rand = Math.random();
+                    if (rand > 0.7) {
+                        riskLevel = 'risk-medium';
+                        riskText = 'Medium';
+                        highRiskCount++;
+                    } else if (rand > 0.9) {
+                        riskLevel = 'risk-high';
+                        riskText = 'High';
+                        highRiskCount++;
+                    }
+                }
+                
+                // Create table row
+                const row = document.createElement('tr');
+                if (status === 'critical') {
+                    row.classList.add('table-danger');
+                } else if (status === 'warning') {
+                    row.classList.add('table-warning');
+                }
+                
+                row.innerHTML = `
+                    <td>${shop.id}</td>
+                    <td>${shop.name}</td>
+                    <td>${shop.location}</td>
+                    <td>Rice: ${shop.expectedRice}kg<br>Wheat: ${shop.expectedWheat}kg</td>
+                    <td>Rice: ${shop.actualRice}kg<br>Wheat: ${shop.actualWheat}kg</td>
+                    <td>
+                        ${riceDiscrepancy > 0 ? `<span class="text-danger">Rice: -${riceDiscrepancy}kg</span><br>` : 'Rice: OK<br>'}
+                        ${wheatDiscrepancy > 0 ? `<span class="text-danger">Wheat: -${wheatDiscrepancy}kg</span>` : 'Wheat: OK'}
+                    </td>
+                    <td><span class="shop-status ${statusClass}">${statusText}</span></td>
+                    <td>
+                        <div class="risk-indicator">
+                            <div class="risk-level ${riskLevel}"></div>
+                        </div>
+                        <small class="text-muted">${riskText}</small>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewShopDetails('${shop.id}')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="sendAlert('${shop.id}')">
+                            <i class="fas fa-bell"></i>
+                        </button>
+                        ${status === 'critical' ? 
+                        `<button class="btn btn-sm btn-outline-danger" onclick="flagForInvestigation('${shop.id}')">
+                            <i class="fas fa-flag"></i>
+                        </button>` : ''}
+                    </td>
+                `;
+                
+                shopMonitoringTable.appendChild(row);
+            });
+            
+            // Update statistics
+            totalShops.textContent = filteredShops.length;
+            normalShops.textContent = normalCount;
+            warningShops.textContent = warningCount;
+            criticalShops.textContent = criticalCount;
+            highRiskShops.textContent = highRiskCount;
+            riskShopCount.textContent = highRiskCount;
+            riskIndicator.className = `risk-level ${highRiskCount > 5 ? 'risk-critical' : highRiskCount > 3 ? 'risk-high' : highRiskCount > 1 ? 'risk-medium' : 'risk-low'}`;
+            
+            // Update alerts
+            updateAlertsDisplay();
+            
+            // Update charts
+            updateCharts(normalCount, warningCount, criticalCount, filteredShops);
+        }
+
+        // Filter shops based on search input
+        function filterShops() {
+            const searchTerm = shopSearch.value.toLowerCase();
+            const rows = shopMonitoringTable.getElementsByTagName('tr');
+            
+            for (let i = 0; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                let found = false;
+                
+                for (let j = 0; j < cells.length; j++) {
+                    if (cells[j].textContent.toLowerCase().includes(searchTerm)) {
+                        found = true;
+                        break;
+                    }
+                }
+                
+                rows[i].style.display = found ? '' : 'none';
+            }
+        }
+
+        // Update alerts display
+        function updateAlertsDisplay() {
+            stockAlerts.innerHTML = '';
+            recentAlertsCount.textContent = `${stockAlertsData.length} Alerts`;
+            alertCount.textContent = stockAlertsData.length;
+            sidebarAlertCount.textContent = stockAlertsData.length;
+            
+            if (stockAlertsData.length === 0) {
+                stockAlerts.innerHTML = '<p class="text-center text-muted">No recent alerts</p>';
+                globalAlert.classList.add('d-none');
+            } else {
+                globalAlert.classList.remove('d-none');
+                alertMessage.textContent = `${stockAlertsData.length} shops show significant stock discrepancies that require attention.`;
+                
+                // Show only 3 most recent alerts on dashboard
+                const recentAlerts = stockAlertsData.slice(0, 3);
+                
+                recentAlerts.forEach(alert => {
+                    const alertElement = document.createElement('div');
+                    alertElement.className = 'alert alert-warning d-flex align-items-center';
+                    alertElement.innerHTML = `
+                        <i class="fas fa-exclamation-triangle me-3"></i>
+                        <div class="flex-grow-1">
+                            <strong>Stock Mismatch Detected</strong><br>
+                            <small>Shop: ${alert.shopName} (${alert.shopId}) | Discrepancy: ${alert.discrepancy}kg | ${alert.timestamp}</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger" onclick="dismissAlert('${alert.shopId}')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    `;
+                    stockAlerts.appendChild(alertElement);
+                });
+                
+                // Update alerts page
+                updateAlertsPage();
+            }
+        }
+
+        // Update alerts page
+        function updateAlertsPage() {
+            alertsContainer.innerHTML = '';
+            
+            if (stockAlertsData.length === 0) {
+                alertsContainer.innerHTML = '<p class="text-center text-muted">No active alerts</p>';
+                return;
+            }
+            
+            stockAlertsData.forEach(alert => {
+                const alertElement = document.createElement('div');
+                alertElement.className = `alert ${alert.status === 'active' ? 'alert-danger' : 'alert-secondary'} mb-3`;
+                alertElement.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="alert-heading">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Stock Mismatch - ${alert.shopName}
+                            </h5>
+                            <p class="mb-1"><strong>Shop ID:</strong> ${alert.shopId} | <strong>Dealer:</strong> ${alert.dealer}</p>
+                            <p class="mb-1"><strong>Discrepancy:</strong> ${alert.discrepancy}kg (Rice: ${alert.riceDiff}kg, Wheat: ${alert.wheatDiff}kg)</p>
+                            <p class="mb-1"><strong>Detected:</strong> ${alert.timestamp}</p>
+                            <p class="mb-0"><strong>Status:</strong> <span class="badge ${alert.status === 'active' ? 'bg-danger' : 'bg-secondary'}">${alert.status === 'active' ? 'Active' : 'Resolved'}</span></p>
+                        </div>
+                        <div>
+                            ${alert.status === 'active' ? `
+                            <button class="btn btn-sm btn-success me-1" onclick="resolveAlert('${alert.shopId}')">
+                                <i class="fas fa-check me-1"></i>Resolve
+                            </button>
+                            ` : ''}
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewShopDetails('${alert.shopId}')">
+                                <i class="fas fa-eye me-1"></i>View Shop
+                            </button>
+                        </div>
+                    </div>
+                `;
+                alertsContainer.appendChild(alertElement);
+            });
+        }
+
+        // Filter alerts by status
+        function filterAlerts(status) {
+            const alerts = alertsContainer.getElementsByClassName('alert');
+            
+            for (let i = 0; i < alerts.length; i++) {
+                const isActive = alerts[i].classList.contains('alert-danger');
+                
+                if (status === 'all') {
+                    alerts[i].style.display = '';
+                } else if (status === 'active' && isActive) {
+                    alerts[i].style.display = '';
+                } else if (status === 'resolved' && !isActive) {
+                    alerts[i].style.display = '';
+                } else {
+                    alerts[i].style.display = 'none';
+                }
+            }
+        }
+
+        // Initialize Charts
+        function initCharts() {
+            // Stock Distribution Chart
+            const stockCtx = document.getElementById('stockChart').getContext('2d');
+            activeCharts.stockChart = new Chart(stockCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Rice', 'Wheat'],
+                    datasets: [
+                        {
+                            label: 'Expected Stock',
+                            data: [0, 0],
+                            backgroundColor: 'rgba(11, 111, 182, 0.7)',
+                            borderColor: 'rgba(11, 111, 182, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Actual Stock',
+                            data: [0, 0],
+                            backgroundColor: 'rgba(46, 125, 50, 0.7)',
+                            borderColor: 'rgba(46, 125, 50, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Stock Distribution (kg)'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Discrepancy Chart
+            const discrepancyCtx = document.getElementById('discrepancyChart').getContext('2d');
+            activeCharts.discrepancyChart = new Chart(discrepancyCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Normal Stock', 'Minor Issues', 'Critical Issues'],
+                    datasets: [{
+                        data: [demoShops.length, 0, 0],
+                        backgroundColor: ['#2e7d32', '#f9a825', '#d32f2f'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Shop Status Distribution'
+                        }
+                    }
+                }
+            });
+
+            // Leakage Chart
+            const leakageCtx = document.getElementById('leakageChart').getContext('2d');
+            activeCharts.leakageChart = new Chart(leakageCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Leakage Incidents',
+                        data: [12, 19, 8, 15, 10, 7],
+                        borderColor: 'rgba(211, 47, 47, 1)',
+                        backgroundColor: 'rgba(211, 47, 47, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Monthly Leakage Trends'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Efficiency Chart
+            const efficiencyCtx = document.getElementById('efficiencyChart').getContext('2d');
+            activeCharts.efficiencyChart = new Chart(efficiencyCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['North', 'South', 'East', 'West'],
+                    datasets: [{
+                        label: 'Efficiency (%)',
+                        data: [92, 88, 85, 90],
+                        backgroundColor: [
+                            'rgba(11, 111, 182, 0.7)',
+                            'rgba(46, 125, 50, 0.7)',
+                            'rgba(237, 108, 2, 0.7)',
+                            'rgba(2, 136, 209, 0.7)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Region-wise Efficiency'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+
+            // Resolution Chart
+            const resolutionCtx = document.getElementById('resolutionChart').getContext('2d');
+            activeCharts.resolutionChart = new Chart(resolutionCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Resolved', 'Pending', 'Under Investigation'],
+                    datasets: [{
+                        data: [65, 20, 15],
+                        backgroundColor: ['#2e7d32', '#f9a825', '#d32f2f'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Mismatch Resolution Status'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update charts with current data
+        function updateCharts(normal, warning, critical, shops) {
+            // Calculate total expected and actual stock
+            let totalExpectedRice = 0;
+            let totalActualRice = 0;
+            let totalExpectedWheat = 0;
+            let totalActualWheat = 0;
+            
+            shops.forEach(shop => {
+                totalExpectedRice += shop.expectedRice;
+                totalActualRice += shop.actualRice;
+                totalExpectedWheat += shop.expectedWheat;
+                totalActualWheat += shop.actualWheat;
+            });
+            
+            // Update stock chart
+            activeCharts.stockChart.data.datasets[0].data = [totalExpectedRice, totalExpectedWheat];
+            activeCharts.stockChart.data.datasets[1].data = [totalActualRice, totalActualWheat];
+            activeCharts.stockChart.update();
+            
+            // Update discrepancy chart
+            activeCharts.discrepancyChart.data.datasets[0].data = [normal, warning, critical];
+            activeCharts.discrepancyChart.update();
+        }
+
+        // Load audit logs
+        function loadAuditLogs() {
+            auditLogs = [
+                { timestamp: new Date().toLocaleString(), user: "officer@fooddept.gov.in", action: "Viewed Dashboard", shopId: "N/A", remarks: "User accessed the main dashboard" },
+                { timestamp: new Date(Date.now() - 300000).toLocaleString(), user: "admin@fooddept.gov.in", action: "Generated Report", shopId: "N/A", remarks: "Monthly compliance report generated" },
+                { timestamp: new Date(Date.now() - 600000).toLocaleString(), user: "officer@fooddept.gov.in", action: "Acknowledged Alert", shopId: "SHOP005", remarks: "Stock mismatch verified and acknowledged" },
+                { timestamp: new Date(Date.now() - 900000).toLocaleString(), user: "admin@fooddept.gov.in", action: "Flagged for Investigation", shopId: "SHOP002", remarks: "Significant discrepancy detected" },
+                { timestamp: new Date(Date.now() - 1200000).toLocaleString(), user: "officer@fooddept.gov.in", action: "Sent Alert", shopId: "SHOP008", remarks: "Notification sent to shop dealer" }
+            ];
+            
+            auditLogsTable.innerHTML = '';
+            auditLogs.forEach(log => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${log.timestamp}</td>
+                    <td>${log.user}</td>
+                    <td>${log.action}</td>
+                    <td>${log.shopId}</td>
+                    <td>${log.remarks}</td>
+                `;
+                auditLogsTable.appendChild(row);
+            });
+        }
+
+        // Load reports
+        function loadReports() {
+            const reports = [
+                { name: "Monthly Compliance Report - June 2023", date: "2023-06-30", type: "PDF", size: "2.4 MB" },
+                { name: "Performance Analytics - Q2 2023", date: "2023-06-15", type: "PDF", size: "1.8 MB" },
+                { name: "Stock Audit Report - May 2023", date: "2023-05-31", type: "PDF", size: "3.1 MB" },
+                { name: "Region-wise Distribution Analysis", date: "2023-05-20", type: "Excel", size: "4.2 MB" }
+            ];
+            
+            reportsList.innerHTML = '';
+            reports.forEach(report => {
+                const item = document.createElement('a');
+                item.href = "#";
+                item.className = "list-group-item list-group-item-action";
+                item.innerHTML = `
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">${report.name}</h6>
+                        <small>${report.date}</small>
+                    </div>
+                    <p class="mb-1">Type: ${report.type} | Size: ${report.size}</p>
+                `;
+                reportsList.appendChild(item);
+            });
+        }
+
+        // Setup real-time listeners for Firebase data
+        function setupRealtimeListeners() {
+            // Listen for stock updates
+            database.ref('stock').on('value', (snapshot) => {
+                console.log('Stock updated:', snapshot.val());
+            });
+            
+            // Listen for transaction updates
+            database.ref('transactions').on('value', (snapshot) => {
+                console.log('Transactions updated:', snapshot.val());
+            });
+        }
+
+        // Action functions
+        function viewShopDetails(shopId) {
+            alert(`Viewing details for shop: ${shopId}\n\nThis would open a detailed view with transaction history, stock records, and audit logs.`);
+            
+            // Log the action
+            addAuditLog("Viewed Shop Details", shopId, "User accessed detailed information for shop");
+        }
+
+        function sendAlert(shopId) {
+            alert(`Alert sent to shop: ${shopId}\n\nThe shop owner has been notified about the stock discrepancy.`);
+            
+            // In a real system, this would send a notification to the shop owner
+            database.ref(`alerts/${shopId}/${Date.now()}`).set({
+                type: 'stock_discrepancy',
+                message: 'Stock discrepancy detected. Please verify your stock records.',
+                timestamp: Date.now(),
+                status: 'sent'
+            });
+            
+            // Log the action
+            addAuditLog("Sent Alert", shopId, "Notification sent to shop dealer regarding stock discrepancy");
+        }
+
+        function flagForInvestigation(shopId) {
+            alert(`Shop ${shopId} flagged for investigation.\n\nThis has been logged in the system and notified to the investigation team.`);
+            
+            // In a real system, this would create an investigation case
+            database.ref(`investigations/${Date.now()}`).set({
+                shopId: shopId,
+                reason: 'Significant stock discrepancy detected',
+                status: 'open',
+                timestamp: Date.now(),
+                assignedTo: 'Investigation Team'
+            });
+            
+            // Log the action
+            addAuditLog("Flagged for Investigation", shopId, "Shop flagged for detailed investigation due to significant discrepancy");
+        }
+
+        function resolveAlert(shopId) {
+            // Find and update the alert
+            const alertIndex = stockAlertsData.findIndex(alert => alert.shopId === shopId);
+            if (alertIndex !== -1) {
+                stockAlertsData[alertIndex].status = 'resolved';
+                updateAlertsDisplay();
+                alert(`Alert for shop ${shopId} has been resolved.`);
+                
+                // Log the action
+                addAuditLog("Resolved Alert", shopId, "Stock mismatch alert marked as resolved");
+            }
+        }
+
+        function dismissAlert(shopId) {
+            // Remove the alert from our local data
+            stockAlertsData = stockAlertsData.filter(alert => alert.shopId !== shopId);
+            updateAlertsDisplay();
+            
+            // Log the action
+            addAuditLog("Dismissed Alert", shopId, "User dismissed the stock mismatch alert");
+        }
+
+        // Add audit log entry
+        function addAuditLog(action, shopId, remarks) {
+            const log = {
+                timestamp: new Date().toLocaleString(),
+                user: authEmail.value,
+                action: action,
+                shopId: shopId,
+                remarks: remarks
+            };
+            
+            auditLogs.unshift(log);
+            
+            // Update the audit logs table
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${log.timestamp}</td>
+                <td>${log.user}</td>
+                <td>${log.action}</td>
+                <td>${log.shopId}</td>
+                <td>${log.remarks}</td>
+            `;
+            auditLogsTable.prepend(row);
+            
+            // Keep only the last 50 logs
+            if (auditLogs.length > 50) {
+                auditLogs.pop();
+                if (auditLogsTable.rows.length > 50) {
+                    auditLogsTable.deleteRow(auditLogsTable.rows.length - 1);
+                }
+            }
+        }
+
+        // Button event listeners
+        generateReportBtn.addEventListener('click', function() {
+            alert('Monthly report generation started. This would create a PDF report with all shop statistics, discrepancies, and recommendations.');
+            addAuditLog("Generated Report", "N/A", "Monthly compliance report generated");
+        });
+
+        sendAlertsBtn.addEventListener('click', function() {
+            alert('Alerts sent to all shops with discrepancies. Shop owners have been notified to verify their stock records.');
+            addAuditLog("Sent Bulk Alerts", "N/A", "Alerts sent to all shops with discrepancies");
+        });
+
+        flagInvestigationBtn.addEventListener('click', function() {
+            const criticalShops = stockAlertsData.filter(alert => alert.severity === 'high');
+            
+            if (criticalShops.length > 0) {
+                alert(`${criticalShops.length} shops flagged for investigation. The investigation team has been notified.`);
+                criticalShops.forEach(shop => {
+                    addAuditLog("Flagged for Investigation", shop.shopId, "Automatically flagged due to critical discrepancy");
+                });
+            } else {
+                alert('No shops currently meet the criteria for investigation.');
+            }
+        });
+
+        generateMonthlyReport.addEventListener('click', function() {
+            alert('Monthly compliance report generation started. The PDF will be available for download shortly.');
+            addAuditLog("Generated Monthly Report", "N/A", "Monthly compliance report generated");
+        });
+
+        generateAnalyticsReport.addEventListener('click', function() {
+            alert('Analytics report generation started. This report will include detailed insights and trends.');
+            addAuditLog("Generated Analytics Report", "N/A", "Performance analytics report generated");
+        });
+
+        // Simulate a stock mismatch for demo purposes
+        function simulateStockMismatch() {
+            // Randomly select a shop and create a mismatch
+            const randomShopIndex = Math.floor(Math.random() * demoShops.length);
+            const shop = demoShops[randomShopIndex];
+            
+            // Create a discrepancy
+            const discrepancy = Math.floor(Math.random() * 20) + 5; // 5-25kg discrepancy
+            shop.actualRice = Math.max(0, shop.expectedRice - discrepancy);
+            
+            // Reload data to show the alert
+            loadShopData();
+            
+            // Show a notification
+            alert(`DEMO: Stock mismatch simulated for ${shop.name}\n\nExpected: ${shop.expectedRice}kg rice\nActual: ${shop.actualRice}kg rice\nDiscrepancy: ${discrepancy}kg\n\nThis triggers our automated fraud detection system.`);
+            
+            // Log the action
+            addAuditLog("Simulated Mismatch", shop.id, "Demo: Stock mismatch simulation for testing purposes");
+        }
+
+        // Add a demo button to simulate stock mismatch
+        window.onload = function() {
+            // The demo button is already in the login form
+        };
+    </script>
+</body>
+</html>
